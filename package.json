@@ -1,0 +1,17 @@
+{
+  "dependencies": {
+    "express": "^4.21.1",
+    "pg": "^8.13.1"
+  },
+  "name": "gf_node_api",
+  "version": "1.0.0",
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

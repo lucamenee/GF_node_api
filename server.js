@@ -84,16 +84,20 @@ app.get('/login', async (req, res) => {
         console.log("login request for user: "+req.query.username);
         const { username, password } = req.query;
         const resultSalt = await pool.query("select salt from utenti where username = $1", [username]);
-        const salt = resultSalt.rows[0].salt;
-        if (salt === null) {
+        let salt = null;
+        try {
+            salt = resultSalt.rows[0].salt;
+        } catch (error) {
             console.log("wrong username");
             res.status(200).send(false);
-        } else {
-            const resultHash = await pool.query("select hashed_password from utenti where username = $1", [username]);
+        }
+        if (salt !== null) {
+            const resultHash = await pool.query("select hashed_password, id_utente from utenti where username = $1", [username]);
             const hash = resultHash.rows[0].hashed_password;
+            const id_utente = resultHash.rows[0].id_utente;
             if (hash === bcrypt.hashSync(password, salt)) {
                 console.log("login success");
-                res.status(200).send(true);
+                res.status(200).send({"id_utente": id_utente});
             } else {
                 console.log("wrong password");
                 res.status(200).send(false);

@@ -4,7 +4,15 @@
  *  Endpoints          Attributes          Method        Description
  * 
  *     /                  -                  GET         Returns the version and a list of available endpoints
+ * 
  *     /inventory       ?id=                 GET         Returns all the inventory items for a given id
+ * 
+ *     /alimenti          -                  GET         Returns all the foods in the db
+ * 
+ *     /addFoodInventory ?id_inventario=&    POST        Add a food to an inventory
+ *                      id_alimento=&
+ *                      data_scadenza=&
+ *                      grammi=&essenziale     
  *
  *     /tags              -                  GET         Get a list of tags
  * 
@@ -49,10 +57,10 @@ app.get('/', (req, res) => {
 });
 
 // function to create a generic select query (pass pars in the order they are in the query)
-function genericSelectQueryEndpoint(query, pars) {
+function genericSelectQuery(query, pars) {
     return async (req, res) => {
+        console.log("querying...");
         try {
-            console.log("querying");
             const data = await pool.query(query, pars);
             console.log(data.rows);
             res.status(200).send(data.rows);
@@ -62,20 +70,58 @@ function genericSelectQueryEndpoint(query, pars) {
     }
 }
 
+// function to create a generic insert query 
+function genericInsertQuery(query, pars) {
+
+    return async (req, res) => {
+        console.log("inserting...");
+        let status = 200, msg = "", rowsAffected = 0;
+        try {
+            const result = await pool.query(query, pars);
+            rowsAffected = result.rowCount;
+            msg =  "insert succeded, rows affected: "+rowsAffected;
+        } catch (error) {
+            status = 500;
+            msg = "insert failed, error: "+error.message;
+        }
+        console.error(msg);
+        res.status(status).send({ "rowsAffected": rowsAffected, "msg": msg });
+    };
+}
+
+// function to create a generic update query
+function genericUpdateQuery(query, pars) {
+    return async (req, res) => {
+        console.log("updating...");
+        let status = 200, msg = "update success", rowsAffected = 0;
+        try {
+            const result = await pool.query(query, pars);
+            rowsAffected = result.rowCount;
+            console.log("update succeded, rows affected: "+rowsAffected);
+        } catch (error) {
+            status = 500;
+            msg = "update failed, error: "+error.message;
+            console.error(error.message);
+        }
+        res.status(status).send({ "rowsAffected": rowsAffected, "msg": msg });
+    };
+}
+
+
 // return all the tags in the db
 app.get('/tags', async (req, res) => {
-    genericSelectQueryEndpoint("select * from tags") (req, res);
+    genericSelectQuery("select * from tags") (req, res);
 })
 
 // return all the foods in the db
 app.get('/alimenti', async (req, res) => {
-    genericSelectQueryEndpoint("select * from alimenti") (req, res);
+    genericSelectQuery("select * from alimenti") (req, res);
 })
 
 // return all the info about an invetory for a given id
 app.get('/inventory', async (req, res) => {
-    genericSelectQueryEndpoint("select * from inventari natural left join righe_inventario " +
-            "natural join alimenti natural join categorie where id_inventario = $1", [req.query.id]) (req, res);
+    genericSelectQuery("select * from inventari natural left join righe_inventario " +
+            "natural join alimenti natural join categorie where id_inventario = $1 ", [req.query.id]) (req, res);
 })
 
 // login
@@ -84,25 +130,26 @@ app.get('/login', async (req, res) => {
         console.log("login request for user: "+req.query.username);
         const { username, password } = req.query;
         const resultSalt = await pool.query("select salt from utenti where username = $1", [username]);
-        let salt = null;
+        let salt = null, msg = null, id_utente = null;
         try {
             salt = resultSalt.rows[0].salt;
         } catch (error) {
-            console.log("wrong username");
-            res.status(200).send(false);
+            msg = "wrong username";
         }
         if (salt !== null) {
             const resultHash = await pool.query("select hashed_password, id_utente from utenti where username = $1", [username]);
             const hash = resultHash.rows[0].hashed_password;
-            const id_utente = resultHash.rows[0].id_utente;
             if (hash === bcrypt.hashSync(password, salt)) {
-                console.log("login success");
-                res.status(200).send({"id_utente": id_utente});
+                msg = "login success";
+                id_utente = resultHash.rows[0].id_utente;
             } else {
-                console.log("wrong password");
-                res.status(200).send(false);
+                msg = "wrong password";
             }
         }
+
+        console.log(msg);
+        res.status(200).send({"msg": msg, "id_utente": id_utente});
+
     } catch (error) {
         console.error(error.message);
     }
@@ -122,6 +169,22 @@ app.post('/register', async (req, res) => {
     }
 })
 
+// insert alimenti in righe_inventario if not already in the db (with the same data_scadenza), update quantity otherwise
+app.post('/addFoodInventory', async (req, res) => {
+    let { id_inventario, id_alimento, data_scadenza, grammi, essenziale } = req.query;
+    if (!essenziale) essenziale = false;
+
+    // check if the row is already in the db
+    const result = await pool.query("select id_riga_inventario from righe_inventario where id_inventario = $1 and id_alimento = $2 and data_scadenza = $3", [id_inventario, id_alimento, data_scadenza]);
+    if (result.rowCount > 0) {
+        const id_riga_inventario = result.rows[0].id_riga_inventario;
+        console.log("row already in the db");
+        genericUpdateQuery("update righe_inventario set grammi = grammi + $1 where id_riga_inventario = $2 ", [grammi, id_riga_inventario]) (req, res);
+    } else {
+        genericInsertQuery("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values ($1, $2, $3, $4, $5)", [id_inventario, id_alimento, data_scadenza, grammi, essenziale]) (req, res);
+
+    }
+})
 
 
 
@@ -140,21 +203,14 @@ app.post('/popolate', async (req, res) => {
     }
 })
 
-// to delete, 
-app.post('/tags', async (req, res) => {
-    try {
-        console.log(req.query.tag);
-        await pool.query('insert into tags (nome_tag) values($1)', [req.query.tag]);
-        res.status(200).send("tag added");
-    } catch (error) {
-        console.error(error.message);
-    }
-})
 
 //to delete, keep for queryng the db
 app.get('/temp', async (req, res) => { 
-    genericSelectQueryEndpoint("alter table utenti alter column hashed_password type varchar(70)") (req, res);
-})
+    //genericSelectQuery("select * from righe_inventario") (req, res);
+    //genericInsertQuery("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values ($1, $2, $3, $4, $5)", [1, 3, '2024-12-25', 300, false]) (req, res);
+ })
+
+
 
 
 

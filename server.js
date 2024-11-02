@@ -5,7 +5,7 @@
  * 
  *     /                  -                  GET         Returns the version and a list of available endpoints
  * 
- *     /inventory       ?id=                 GET         Returns all the inventory items for a given id
+ *     /inventory       ?id_inventario=      GET         Return all the products in a invetory for a given id_inventario
  * 
  *     /alimenti          -                  GET         Returns all the foods in the db
  * 
@@ -118,10 +118,11 @@ app.get('/alimenti', async (req, res) => {
     genericSelectQuery("select * from alimenti natural join categorie") (req, res);
 })
 
-// return all the info about an invetory for a given id
+// return all the products in a invetory for a given id_inventario
 app.get('/inventory', async (req, res) => {
-    genericSelectQuery("select * from inventari natural left join righe_inventario " +
-            "natural join alimenti natural join categorie where id_inventario = $1 ", [req.query.id]) (req, res);
+    genericSelectQuery("select * from righe_inventario " +
+            "natural join alimenti natural join categorie " +
+            "where id_inventario = $1", [req.query.id_inventario]) (req, res);
 })
 
 // login
@@ -130,7 +131,7 @@ app.post('/login', async (req, res) => {
         console.log("login request for user: "+req.query.username);
         const { username, password } = req.query;
         const resultSalt = await pool.query("select salt from utenti where username = $1", [username]);
-        let salt = null, msg = null, id_utente = null, status = 200;
+        let salt = null, msg = null, id_utente = null, status = 200, id_inventario = null;
         try {
             salt = resultSalt.rows[0].salt;
         } catch (error) {
@@ -138,11 +139,12 @@ app.post('/login', async (req, res) => {
             status = 401;
         }
         if (salt !== null) {
-            const resultHash = await pool.query("select hashed_password, id_utente from utenti where username = $1", [username]);
+            const resultHash = await pool.query("select hashed_password, id_utente, id_inventario from utenti where username = $1", [username]);
             const hash = resultHash.rows[0].hashed_password;
             if (hash === bcrypt.hashSync(password, salt)) {
                 msg = "login success";
                 id_utente = resultHash.rows[0].id_utente;
+                id_inventario = resultHash.rows[0].id_inventario;
             } else {
                 msg = "wrong password";
                 status = 401;
@@ -150,7 +152,7 @@ app.post('/login', async (req, res) => {
         }
 
         console.log(msg);
-        res.status(status).send({"msg": msg, "id_utente": id_utente});
+        res.status(status).send({"msg": msg, "id_utente": id_utente, "id_inventario": id_inventario});
 
     } catch (error) {
         console.error(error.message);
@@ -210,6 +212,8 @@ app.post('/popolate', async (req, res) => {
 app.get('/temp', async (req, res) => { 
     // genericSelectQuery("delete from utenti where id_utente <> 2") (req, res);
     genericSelectQuery("select * from utenti") (req, res);
+
+    // genericUpdateQuery("update utenti set id_inventario = 1") (req, res);
 
     //genericSelectQuery("select * from righe_inventario") (req, res);
     //genericInsertQuery("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values ($1, $2, $3, $4, $5)", [1, 3, '2024-12-25', 300, false]) (req, res);

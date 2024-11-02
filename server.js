@@ -165,9 +165,9 @@ app.post('/register', async (req, res) => {
     const hash = bcrypt.hashSync(password, salt);
     try {
         await pool.query("insert into utenti (username, hashed_password, salt, obiettivo_kcal, email) values ($1, $2, $3, $4, $5)", [username, hash, salt, kcal, email]);
-        res.status(200).send("user added");
+        res.status(200).send({msg: "user added"});
     } catch (error) {
-        console.error(error.message);
+        console.error({msg: error.message});
     }
 })
 
@@ -208,6 +208,9 @@ app.post('/popolate', async (req, res) => {
 
 //to delete, keep for queryng the db
 app.get('/temp', async (req, res) => { 
+    // genericSelectQuery("delete from utenti where id_utente <> 2") (req, res);
+    genericSelectQuery("select * from utenti") (req, res);
+
     //genericSelectQuery("select * from righe_inventario") (req, res);
     //genericInsertQuery("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values ($1, $2, $3, $4, $5)", [1, 3, '2024-12-25', 300, false]) (req, res);
  })

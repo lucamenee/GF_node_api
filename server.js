@@ -115,7 +115,7 @@ app.get('/tags', async (req, res) => {
 
 // return all the foods in the db
 app.get('/alimenti', async (req, res) => {
-    genericSelectQuery("select * from alimenti") (req, res);
+    genericSelectQuery("select * from alimenti natural join categorie") (req, res);
 })
 
 // return all the info about an invetory for a given id

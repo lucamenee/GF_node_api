@@ -125,16 +125,17 @@ app.get('/inventory', async (req, res) => {
 })
 
 // login
-app.get('/login', async (req, res) => {
+app.post('/login', async (req, res) => {
     try {
         console.log("login request for user: "+req.query.username);
         const { username, password } = req.query;
         const resultSalt = await pool.query("select salt from utenti where username = $1", [username]);
-        let salt = null, msg = null, id_utente = null;
+        let salt = null, msg = null, id_utente = null, status = 200;
         try {
             salt = resultSalt.rows[0].salt;
         } catch (error) {
             msg = "wrong username";
+            status = 401;
         }
         if (salt !== null) {
             const resultHash = await pool.query("select hashed_password, id_utente from utenti where username = $1", [username]);
@@ -144,11 +145,12 @@ app.get('/login', async (req, res) => {
                 id_utente = resultHash.rows[0].id_utente;
             } else {
                 msg = "wrong password";
+                status = 401;
             }
         }
 
         console.log(msg);
-        res.status(200).send({"msg": msg, "id_utente": id_utente});
+        res.status(status).send({"msg": msg, "id_utente": id_utente});
 
     } catch (error) {
         console.error(error.message);

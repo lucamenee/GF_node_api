@@ -1,5 +1,5 @@
 /**
- *  Simple HTTP REST server + MongoDB (Mongoose) + Express
+ *  HTTP REST server + Express
  * 
  *  Endpoints          Attributes          Method        Description
  * 
@@ -20,6 +20,8 @@
  * 
  *     /register       ?username=&password=  POST       register a new user
  *                      &kcal=&email=
+ *      
+ *     /user            ?id_utente=          GET       get all info from a user of a given id_utente
  * 
  *     ...
  * 
@@ -55,6 +57,20 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => {
     res.sendStatus(200).json( { api_version: "1.0", endpoints: ["/login", "/tags", "/inventory"] } );
 });
+
+// single record query
+function singleRecordQuery(query, pars) {
+    return async (req, res) => {
+        console.log("querying...");
+        try {
+            const data = await pool.query(query, pars);
+            console.log(data.rows[0]);
+            res.status(200).send(data.rows[0]);
+        } catch (error) {
+            console.error(error.message);
+        }
+    }
+}
 
 // function to create a generic select query (pass pars in the order they are in the query)
 function genericSelectQuery(query, pars) {
@@ -190,6 +206,17 @@ app.post('/addFoodInventory', async (req, res) => {
     }
 })
 
+// get main info from a user of a given id_utente
+app.get('/user', async (req, res) => {
+    singleRecordQuery("select id_utente, username, email, obiettivo_kcal, id_inventario from utenti where id_utente = $1 limit 1", [req.query.id_utente]) (req, res);
+})
+
+
+/*
+ endpoint per ritonrare per quanti giorni negli ultimi 7 l'utente ha raggiunto l'obiettivo giornaliero di kcal 
+*/
+
+
 
 
 
@@ -217,7 +244,7 @@ app.get('/temp', async (req, res) => {
 
     //genericSelectQuery("select * from righe_inventario") (req, res);
     //genericInsertQuery("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values ($1, $2, $3, $4, $5)", [1, 3, '2024-12-25', 300, false]) (req, res);
- })
+})
 
 
 

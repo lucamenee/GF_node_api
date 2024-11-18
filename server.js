@@ -12,7 +12,7 @@
  *     /addFoodInventory ?id_inventario=&    POST        Add a food to an inventory
  *                      id_alimento=&
  *                      data_scadenza=&
- *                      grammi=&essenziale     
+ *                      grammi=&essenziale=     
  *
  *     /tags              -                  GET         Get a list of tags
  * 
@@ -213,8 +213,45 @@ app.get('/user', async (req, res) => {
 
 
 /*
- endpoint per ritonrare per quanti giorni negli ultimi 7 l'utente ha raggiunto l'obiettivo giornaliero di kcal 
+ endpoint per 
+ 
+ - updateUserInfo
+ - updateFoodQt(int, qt)
+ - consumeFood(int, qt) -> chiama uodateFoodqt e poi segna cibo come consumato
+
 */
+
+
+/* endpoint non mappati in android e non aggiungti a descrizione di questo file */
+
+// return for how many days in the last 7 the user reached the daily goal of kcal
+app.get('/daysGoalReached', async (req, res) => {
+    genericSelectQuery(`
+        WITH dates AS (
+            SELECT generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day'::interval) AS data_consumazione
+        )
+        select d.data_consumazione, 
+         coalesce(obiettivo_kcal > sum(grammi * kcal/100), true) as obbiettivo_raggiunto,
+         (select obiettivo_kcal from utenti where id_utente = $1), 
+         coalesce(sum(grammi * kcal / 100), 0) as kcal_consumate
+        from dates d
+        left join alimenti_consumati ac on ac.data_consumazione = d.data_consumazione
+        natural left join utenti 
+        natural left join alimenti 
+        where id_utente = $1 or id_utente is null
+        group by d.data_consumazione, obiettivo_kcal
+
+        
+    `, [req.query.id_utente]) (req, res);
+
+})
+
+// suggest recipes for a given id_inventario
+// TODO: add more complex query to suggest recipes based on the food in the inventory -> v2.0 suggest recipes based on the tags and exèiring date of the food in the inventory
+app.get('/suggestRecipes', async (req, res) => {
+    genericSelectQuery("select distinct id_ricetta, nome_ricetta from ricette natural join righe_ricette natural join alimenti " + 
+        "where id_alimento in (select id_alimento from inventari where id_inventario = $1)", [req.query.id_inventario]) (req, res);
+})
 
 
 
@@ -223,10 +260,10 @@ app.get('/user', async (req, res) => {
 
 
 // to delete, keep only for popolate the db, keep only for reference for post requests (?make a insert generic query function like for select?)
-app.post('/popolate', async (req, res) => {
+app.get('/populate', async (req, res) => {
     try {
         console.log("populating db");
-        //await pool.query("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values (1, 3, '2024-12-18', 300, false)");
+        await pool.query("insert into alimenti_consumati(id_utente, id_alimento, data_consumazione, grammi) values (2, 4, '2024-11-16', 200)");
             
         res.status(200).send("data added");
     } catch (error) {
@@ -238,9 +275,7 @@ app.post('/popolate', async (req, res) => {
 //to delete, keep for queryng the db
 app.get('/temp', async (req, res) => { 
     // genericSelectQuery("delete from utenti where id_utente <> 2") (req, res);
-    genericSelectQuery("select * from utenti") (req, res);
-
-    // genericUpdateQuery("update utenti set id_inventario = 1") (req, res);
+    genericSelectQuery("select * from alimenti_consumati") (req, res);
 
     //genericSelectQuery("select * from righe_inventario") (req, res);
     //genericInsertQuery("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values ($1, $2, $3, $4, $5)", [1, 3, '2024-12-25', 300, false]) (req, res);

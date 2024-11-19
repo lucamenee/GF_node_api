@@ -71,7 +71,7 @@ async function executeQuery(query, pars) {
 }
 
 // function to implement a endpoint for a single record query
-function singleRecordQuery(query, pars) {
+function singleRecordEndpoint(query, pars) {
     return async (req, res) => {
         console.log("querying...");
 
@@ -215,14 +215,13 @@ app.post('/addFoodInventory', async (req, res) => {
 
 // get main info from a user of a given id_utente
 app.get('/user', async (req, res) => {
-    singleRecordQuery("select id_utente, username, email, obiettivo_kcal, id_inventario from utenti where id_utente = $1 limit 1", [req.query.id_utente]) (req, res);
+    singleRecordEndpoint("select id_utente, username, email, obiettivo_kcal, id_inventario from utenti where id_utente = $1 limit 1", [req.query.id_utente]) (req, res);
 })
 
 
 /*
  endpoint per 
  
- - updateUserInfo
  - updateFoodQt(int, qt)
  - consumeFood(int, qt) -> chiama uodateFoodqt e poi segna cibo come consumato
 
@@ -266,14 +265,35 @@ app.post('/updateUserInfo', async (req, res) => {
     const obiettivo_kcal = req.query.obiettivo_kcal;
     const id_inventario = req.query.id_inventario;
     const id_utente = req.query.id_utente;
-    /* construisci query in base a che parametri sono passati -> IDEA: concatena stringhe per la set*/
-    // if (mail) {
-    //     genericUpdateQuery("update utenti set email = $1 where id_utente = $2", [mail, id_utente]) (req, res);
-    // }
-    // if (obiettivo_kcal) {
-    //     genericUpdateQuery("update utenti set obiettivo_kcal = $1 where id_utente = $2", [obiettivo_kcal, id_utente]) (req, res);
-    // }
+    
+    let resMail, resObiettivoKcal, resIdInventario;
+    let rowsAffected = 0, msg = null, status = 200;
+
+    if (mail) {
+        resMail = await executeQuery("update utenti set email = $1 where id_utente = $2", [mail, id_utente]);
+        msg = resMail.error;
+        status = status < resMail.status ? resMail.status : status;
+    }
+    if (obiettivo_kcal) {
+        resObiettivoKcal = await executeQuery("update utenti set obiettivo_kcal = $1 where id_utente = $2", [obiettivo_kcal, id_utente]);
+        msg += resObiettivoKcal.error;
+        status = status < resObiettivoKcal.status ? resObiettivoKcal.status : status;
+
+    }
+    if (id_inventario) {
+        resIdInventario = await executeQuery("update utenti set id_inventario = $1 where id_utente = $2", [id_inventario, id_utente]);
+        msg += resIdInventario.error;
+        status = status < resIdInventario.status ? resIdInventario.status : status;
+    }
+
+    if (!msg) {
+        rowsAffected = 1;
+        msg = "Update succeded, rows affected " + rowsAffected;
+    }
+    res.status(status).send({"rowsAffected": rowsAffected, "msg": msg});
 })
+
+
 
 
 

@@ -253,6 +253,20 @@ app.get('/suggestRecipes', async (req, res) => {
         "where id_alimento in (select id_alimento from inventari where id_inventario = $1)", [req.query.id_inventario]) (req, res);
 })
 
+// update user info (mail, obiettivo_kcal e id_inventario)
+app.post('/updateUserInfo', async (req, res) => {
+    const mail = req.query.mail;
+    const obiettivo_kcal = req.query.obiettivo_kcal;
+    const id_inventario = req.query.id_inventario;
+    const id_utente = req.query.id_utente;
+    /* construisci query in base a che parametri sono passati -> IDEA: concatena stringhe per la set*/
+    // if (mail) {
+    //     genericUpdateQuery("update utenti set email = $1 where id_utente = $2", [mail, id_utente]) (req, res);
+    // }
+    // if (obiettivo_kcal) {
+    //     genericUpdateQuery("update utenti set obiettivo_kcal = $1 where id_utente = $2", [obiettivo_kcal, id_utente]) (req, res);
+    // }
+})
 
 
 

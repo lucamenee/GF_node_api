@@ -58,85 +58,92 @@ app.get('/', (req, res) => {
     res.sendStatus(200).json( { api_version: "1.0", endpoints: ["/login", "/tags", "/inventory"] } );
 });
 
-// single record query
+//function for executing query, returns {data: queryResult, status: statusCodeForResponse, error: errorMsg}
+async function executeQuery(query, pars) {
+    let resultQ = null, resultStatus = 200, resultErr = null;
+    try {
+        resultQ = await pool.query(query, pars);
+    } catch (error) {
+        resultErr = error.message;
+        resultStatus = 500;
+    }
+    return {'data': resultQ, 'status': resultStatus, 'error': resultErr};
+}
+
+// function to implement a endpoint for a single record query
 function singleRecordQuery(query, pars) {
     return async (req, res) => {
         console.log("querying...");
-        try {
-            const data = await pool.query(query, pars);
-            console.log(data.rows[0]);
-            res.status(200).send(data.rows[0]);
-        } catch (error) {
-            console.error(error.message);
-        }
+
+        const {data, status, error} = await executeQuery(query, pars);
+        let toSend = error ? error : data.rows[0];
+        console.log(toSend);    
+        res.status(status).send(toSend)
     }
 }
 
-// function to create a generic select query (pass pars in the order they are in the query)
-function genericSelectQuery(query, pars) {
+// function to implement a endpoint for a generic select query (pass pars in the order they are in the query)
+function genericSelectEndpoint(query, pars) {
     return async (req, res) => {
         console.log("querying...");
-        try {
-            const data = await pool.query(query, pars);
-            console.log(data.rows);
-            res.status(200).send(data.rows);
-        } catch (error) {
-            console.error(error.message);
-        }
+
+        const {data, status, error} = await executeQuery(query, pars);
+        let toSend = error ? error : data.rows;
+        console.log(toSend);    
+        res.status(status).send(toSend)
     }
 }
 
-// function to create a generic insert query 
-function genericInsertQuery(query, pars) {
-
+// function to implement a endpoint for a generic insert query (pass pars in the order they are in the query)
+function genericInsertEndpoint(query, pars) {
     return async (req, res) => {
         console.log("inserting...");
-        let status = 200, msg = "", rowsAffected = 0;
-        try {
-            const result = await pool.query(query, pars);
-            rowsAffected = result.rowCount;
-            msg =  "insert succeded, rows affected: "+rowsAffected;
-        } catch (error) {
-            status = 500;
-            msg = "insert failed, error: "+error.message;
+
+        const {data, status, error} = await executeQuery(query, pars);
+        let rowsAffected = 0, msg = "";
+        if (data) {
+            rowsAffected = data.rowCount;
+            msg = "insert succeded, rows affected: "+rowsAffected;
+        } else {
+            msg = "insert failed, error: "+error;
         }
-        console.error(msg);
-        res.status(status).send({ "rowsAffected": rowsAffected, "msg": msg });
-    };
+        console.log(msg);    
+        res.status(status).send({ "rowsAffected": rowsAffected, "msg": msg})
+    }
 }
 
-// function to create a generic update query
-function genericUpdateQuery(query, pars) {
-    return async (req, res) => {
+// function to implement a endpoint for a generic update query (pass pars in the order they are in the query)
+function genericUpdateEndpoint(query, pars) {
+        return async (req, res) => {
         console.log("updating...");
-        let status = 200, msg = "update success", rowsAffected = 0;
-        try {
-            const result = await pool.query(query, pars);
-            rowsAffected = result.rowCount;
-            console.log("update succeded, rows affected: "+rowsAffected);
-        } catch (error) {
-            status = 500;
-            msg = "update failed, error: "+error.message;
-            console.error(error.message);
+
+        const {data, status, error} = await executeQuery(query, pars);
+        let rowsAffected = 0, msg = "";
+        if (data) {
+            rowsAffected = data.rowCount;
+            msg = "update succeded, rows affected: "+rowsAffected;
+        } else {
+            msg = "update failed, error: "+error;
         }
-        res.status(status).send({ "rowsAffected": rowsAffected, "msg": msg });
-    };
+        console.log(msg);    
+        res.status(status).send({ "rowsAffected": rowsAffected, "msg": msg})
+    }
 }
 
 
 // return all the tags in the db
 app.get('/tags', async (req, res) => {
-    genericSelectQuery("select * from tags") (req, res);
+    genericSelectEndpoint("select * from tags") (req, res);
 })
 
 // return all the foods in the db
 app.get('/alimenti', async (req, res) => {
-    genericSelectQuery("select * from alimenti natural join categorie") (req, res);
+    genericSelectEndpoint("select * from alimenti natural join categorie") (req, res);
 })
 
 // return all the products in a invetory for a given id_inventario
 app.get('/inventory', async (req, res) => {
-    genericSelectQuery("select * from righe_inventario " +
+    genericSelectEndpoint("select * from righe_inventario " +
             "natural join alimenti natural join categorie " +
             "where id_inventario = $1", [req.query.id_inventario]) (req, res);
 })
@@ -199,9 +206,9 @@ app.post('/addFoodInventory', async (req, res) => {
     if (result.rowCount > 0) {
         const id_riga_inventario = result.rows[0].id_riga_inventario;
         console.log("row already in the db");
-        genericUpdateQuery("update righe_inventario set grammi = grammi + $1 where id_riga_inventario = $2 ", [grammi, id_riga_inventario]) (req, res);
+        genericUpdateEndpoint("update righe_inventario set grammi = grammi + $1 where id_riga_inventario = $2 ", [grammi, id_riga_inventario]) (req, res);
     } else {
-        genericInsertQuery("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values ($1, $2, $3, $4, $5)", [id_inventario, id_alimento, data_scadenza, grammi, essenziale]) (req, res);
+        genericInsertEndpoint("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values ($1, $2, $3, $4, $5)", [id_inventario, id_alimento, data_scadenza, grammi, essenziale]) (req, res);
 
     }
 })
@@ -226,7 +233,7 @@ app.get('/user', async (req, res) => {
 
 // return for how many days in the last 7 the user reached the daily goal of kcal
 app.get('/daysGoalReached', async (req, res) => {
-    genericSelectQuery(`
+    genericSelectEndpoint(`
         WITH dates AS (
             SELECT generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day'::interval) AS data_consumazione
         )
@@ -249,7 +256,7 @@ app.get('/daysGoalReached', async (req, res) => {
 // suggest recipes for a given id_inventario
 // TODO: add more complex query to suggest recipes based on the food in the inventory -> v2.0 suggest recipes based on the tags and exèiring date of the food in the inventory
 app.get('/suggestRecipes', async (req, res) => {
-    genericSelectQuery("select distinct id_ricetta, nome_ricetta from ricette natural join righe_ricette natural join alimenti " + 
+    genericSelectEndpoint("select distinct id_ricetta, nome_ricetta from ricette natural join righe_ricette natural join alimenti " + 
         "where id_alimento in (select id_alimento from inventari where id_inventario = $1)", [req.query.id_inventario]) (req, res);
 })
 
@@ -289,7 +296,7 @@ app.get('/populate', async (req, res) => {
 //to delete, keep for queryng the db
 app.get('/temp', async (req, res) => { 
     // genericSelectQuery("delete from utenti where id_utente <> 2") (req, res);
-    genericSelectQuery("select * from alimenti_consumati") (req, res);
+    genericSelectEndpoint("select * from alimenti_consumati") (req, res);
 
     //genericSelectQuery("select * from righe_inventario") (req, res);
     //genericInsertQuery("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values ($1, $2, $3, $4, $5)", [1, 3, '2024-12-25', 300, false]) (req, res);

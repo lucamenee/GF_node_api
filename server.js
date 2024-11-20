@@ -23,7 +23,19 @@
  *      
  *     /user            ?id_utente=          GET       get all info from a user of a given id_utente
  * 
- *     ...
+ *     /daysGoalReached ?id_utente=          GET
+ * 
+ *     /updateUserInfo  ?mail=&              POST
+ *                      obiettivo_kca=&
+ *                      id_inventario=
+ * 
+ *     /updateFoodQt    ?id_riga=&qt=        POST
+ * 
+ *     /updateFoodExipire ?id_riga=&data=    POST
+ * 
+ * 
+ *     /consumeFood     ?id_utente=&qt=&     POST
+ *                      id_riga=
  * 
  **/
 
@@ -143,9 +155,9 @@ app.get('/alimenti', async (req, res) => {
 
 // return all the products in a invetory for a given id_inventario
 app.get('/inventory', async (req, res) => {
-    genericSelectEndpoint("select * from righe_inventario " +
+    genericSelectEndpoint("select *, grammi/peso_unitario as numero_prodotti from righe_inventario " +
             "natural join alimenti natural join categorie " +
-            "where id_inventario = $1", [req.query.id_inventario]) (req, res);
+            "where id_inventario = $1 and (grammi > 0 OR essenziale=true)", [req.query.id_inventario]) (req, res);
 })
 
 // login
@@ -219,14 +231,6 @@ app.get('/user', async (req, res) => {
 })
 
 
-/*
- endpoint per 
- 
- - updateFoodQt(int, qt)
- - consumeFood(int, qt) -> chiama uodateFoodqt e poi segna cibo come consumato
-
-*/
-
 
 /* endpoint non mappati in android e non aggiungti a descrizione di questo file */
 
@@ -236,18 +240,18 @@ app.get('/daysGoalReached', async (req, res) => {
         WITH dates AS (
             SELECT generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, '1 day'::interval) AS data_consumazione
         )
-        select d.data_consumazione, 
-         coalesce(obiettivo_kcal > sum(grammi * kcal/100), true) as obbiettivo_raggiunto,
-         (select obiettivo_kcal from utenti where id_utente = $1), 
-         coalesce(sum(grammi * kcal / 100), 0) as kcal_consumate
-        from dates d
-        left join alimenti_consumati ac on ac.data_consumazione = d.data_consumazione
-        natural left join utenti 
-        natural left join alimenti 
-        where id_utente = $1 or id_utente is null
-        group by d.data_consumazione, obiettivo_kcal
-
-        
+        SELECT 
+            d.data_consumazione::date AS data_consumazione, 
+            COALESCE(obiettivo_kcal > SUM(grammi * kcal / 100), true) AS obiettivo_raggiunto,
+            (SELECT obiettivo_kcal FROM utenti WHERE id_utente = $1) AS obiettivo_kcal,
+            COALESCE(SUM(grammi * kcal / 100), 0) AS kcal_consumate
+        FROM dates d
+        LEFT JOIN alimenti_consumati ac ON DATE_TRUNC('day', ac.data_consumazione) = d.data_consumazione
+        NATURAL LEFT JOIN utenti 
+        NATURAL LEFT JOIN alimenti 
+        WHERE id_utente = $1 OR id_utente IS NULL
+        GROUP BY d.data_consumazione, obiettivo_kcal
+        ORDER BY d.data_consumazione DESC        
     `, [req.query.id_utente]) (req, res);
 
 })
@@ -291,6 +295,54 @@ app.post('/updateUserInfo', async (req, res) => {
         msg = "Update succeded, rows affected " + rowsAffected;
     }
     res.status(status).send({"rowsAffected": rowsAffected, "msg": msg});
+})
+
+// add qt grams for food of row id_riga (qt can be negative for subtractions)
+app.post('/updateFoodQt', async (req, res) => {
+    const id_riga = req.query.id_riga;
+    const qt = req.query.qt;
+    genericUpdateEndpoint("update righe_inventario set grammi = (select grammi from righe_inventario where id_riga_inventario = $2) + $1 where id_riga_inventario = $2", [qt, id_riga]) (req, res);
+})
+
+// modify expiring date for food of row id_riga
+app.post('/updateFoodExpire', async (req, res) => {
+    const id_riga = req.query.id_riga;
+    const data = req.query.data;
+    genericUpdateEndpoint("update righe_inventario set data_scadenza = $1 where id_riga_inventario = $2", [data, id_riga]) (req, res);
+})
+
+// remove qt grams from food of row id_riga from righe_inventario, adding qt grams of that food in table alimenti_consumati
+//params (id_utente, qt, id_riga)
+app.post('/consumeFood', async (req, res) => {
+    const id_riga = req.query.id_riga;
+    const qt = req.query.qt;
+    const id_utente = req.query.id_utente;
+    // get data from table righe_inventario
+    const {data: data_get, status: status_get, error: error_get} = await executeQuery('select * from righe_inventario where id_riga_inventario = $1', [id_riga]); 
+    const data_get_row = data_get.rows[0];
+    const id_alimento = data_get_row.id_alimento
+    
+    
+    // remove from table righe_inventario
+    const {data: data_remove, status: status_remove, error: error_remove} = await executeQuery('update righe_inventario set grammi = (select grammi from righe_inventario where id_riga_inventario = $2) + $1 where id_riga_inventario = $2', [-qt, id_riga]);
+    let msg = "update succeded", rowsAffected = 0, status = status_remove;
+
+    if (!error_remove) {
+        rowsAffected += data_remove.rowCount;
+        
+        // if succeded add that to table alimenti_consumati (it might be usefull to query the data first with a select for a easier insert)
+        const {data: data_insert, status: status_insert, error: error_insert} = await executeQuery('insert into alimenti_consumati (id_utente, id_alimento, data_consumazione, grammi) values ($1, $2, $3, $4)', [id_utente, id_alimento, new Date().toISOString(), qt]);
+        status = status_insert;
+        if (error_insert) {
+            msg = "error, " + error_insert;
+        } else {
+            rowsAffected += data_insert.rowCount;
+        }
+    } else {
+        msg = "error, " + error_remove;
+    }
+    console.log(msg);
+    res.status(status).send({"msg": msg, "rowsAffected": rowsAffected});
 })
 
 

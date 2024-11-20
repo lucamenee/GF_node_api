@@ -27,7 +27,8 @@
  * 
  *     /updateUserInfo  ?mail=&              POST
  *                      obiettivo_kca=&
- *                      id_inventario=
+ *                      id_inventario=&
+ *                      id_utente=
  * 
  *     /updateFoodQt    ?id_riga=&qt=        POST
  * 
@@ -259,8 +260,16 @@ app.get('/daysGoalReached', async (req, res) => {
 // suggest recipes for a given id_inventario
 // TODO: add more complex query to suggest recipes based on the food in the inventory -> v2.0 suggest recipes based on the tags and exèiring date of the food in the inventory
 app.get('/suggestRecipes', async (req, res) => {
-    genericSelectEndpoint("select distinct id_ricetta, nome_ricetta from ricette natural join righe_ricette natural join alimenti " + 
-        "where id_alimento in (select id_alimento from inventari where id_inventario = $1)", [req.query.id_inventario]) (req, res);
+    const {data, status, error} = await executeQuery("select distinct id_ricetta, nome_ricetta from ricette natural join righe_ricette natural join alimenti " + 
+        "where id_alimento in (select id_alimento from inventari where id_inventario = $1)", [req.query.id_inventario]);
+    let result = data.rows;
+    for (let r_row of result) {
+        console.log(r_row)
+        const {data: data_row, status, error} = await executeQuery('select nome_alimento, grammi from righe_ricette natural join alimenti where id_ricetta = $1', [r_row.id_ricetta]);
+        r_row.ingredienti = data_row.rows;
+    }
+
+    res.status(status).send(result);
 })
 
 // update user info (mail, obiettivo_kcal e id_inventario)

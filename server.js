@@ -25,6 +25,8 @@
  * 
  *     /daysGoalReached ?id_utente=          GET
  * 
+ *     /suggestRecipes  ?id_inventario=      GET
+ * 
  *     /updateUserInfo  ?mail=&              POST
  *                      obiettivo_kca=&
  *                      id_inventario=&
@@ -68,8 +70,9 @@ app.use((req, res, next) => {
 
 //routes
 app.get('/', (req, res) => {
-    res.sendStatus(200).json( { api_version: "1.0", endpoints: ["/login", "/tags", "/inventory"] } );
+    res.sendStatus(200).json( { api_version: "1.0", endpoints: ["/login", "/register", "/tags", "/inventory", "/alimenti", "/addFoodInventory", "/user", "/daysGoalReached", "/suggestRecipes", "/updateUserInfo", "/updateFoodQt", "/UpdateFoodExpire", "/consumeFood"] } );
 });
+
 
 //function for executing query, returns {data: queryResult, status: statusCodeForResponse, error: errorMsg}
 async function executeQuery(query, pars) {
@@ -232,9 +235,6 @@ app.get('/user', async (req, res) => {
 })
 
 
-
-/* endpoint non mappati in android e non aggiungti a descrizione di questo file */
-
 // return for how many days in the last 7 the user reached the daily goal of kcal
 app.get('/daysGoalReached', async (req, res) => {
     genericSelectEndpoint(`
@@ -264,11 +264,10 @@ app.get('/suggestRecipes', async (req, res) => {
         "where id_alimento in (select id_alimento from inventari where id_inventario = $1)", [req.query.id_inventario]);
     let result = data.rows;
     for (let r_row of result) {
-        console.log(r_row)
         const {data: data_row, status, error} = await executeQuery('select nome_alimento, grammi from righe_ricette natural join alimenti where id_ricetta = $1', [r_row.id_ricetta]);
         r_row.ingredienti = data_row.rows;
     }
-
+    console.log(result);
     res.status(status).send(result);
 })
 

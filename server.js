@@ -353,6 +353,13 @@ app.post('/consumeFood', async (req, res) => {
     res.status(status).send({"msg": msg, "rowsAffected": rowsAffected});
 })
 
+// return all the users who have access to inventory with a certain id_inventario
+app.get('/getUsersInInventory', async (req, res) => {
+    const id_inventario = req.query.id_inventario
+    genericSelectEndpoint("select id_utente, username, email, id_inventario, obiettivo_kcal from utenti where id_inventario = $1", 
+        [id_inventario]) (req, res);
+})
+
 
 
 
@@ -364,7 +371,7 @@ app.post('/consumeFood', async (req, res) => {
 app.get('/populate', async (req, res) => {
     try {
         console.log("populating db");
-        await pool.query("insert into alimenti_consumati(id_utente, id_alimento, data_consumazione, grammi) values (2, 4, '2024-11-16', 200)");
+        await pool.query("insert into alimenti (nome_alimento, kcal, peso_unitario, img, id_cat) values ('zucchine', 17, 100, 'zucchine.png', 1)");
             
         res.status(200).send("data added");
     } catch (error) {
@@ -376,7 +383,8 @@ app.get('/populate', async (req, res) => {
 //to delete, keep for queryng the db
 app.get('/temp', async (req, res) => { 
     // genericSelectQuery("delete from utenti where id_utente <> 2") (req, res);
-    genericSelectEndpoint("select * from alimenti_consumati") (req, res);
+    genericSelectEndpoint("select * from alimenti") (req, res);
+    //genericInsertEndpoint("insert into categorie (nome_categoria, durata_media) values ('pesce', 3)") (req, res);
 
     //genericSelectQuery("select * from righe_inventario") (req, res);
     //genericInsertQuery("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values ($1, $2, $3, $4, $5)", [1, 3, '2024-12-25', 300, false]) (req, res);

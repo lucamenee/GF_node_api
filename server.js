@@ -40,6 +40,9 @@
  *     /consumeFood     ?id_utente=&qt=&     POST
  *                      id_riga=
  * 
+ *     /getUsersInInventory                  GET
+ *                      ?id_inventario      
+ * 
  **/
 
 require('dotenv').config();
@@ -68,11 +71,14 @@ app.use((req, res, next) => {
 });
 
 
+
 //routes
 app.get('/', (req, res) => {
-    res.sendStatus(200).json( { api_version: "1.0", endpoints: ["/login", "/register", "/tags", "/inventory", "/alimenti", "/addFoodInventory", "/user", "/daysGoalReached", "/suggestRecipes", "/updateUserInfo", "/updateFoodQt", "/UpdateFoodExpire", "/consumeFood"] } );
+    res.sendStatus(200).json( { api_version: "1.0", 
+        endpoints: ["/login", "/register", "/tags", "/inventory", "/alimenti", "/addFoodInventory", 
+            "/user", "/daysGoalReached", "/suggestRecipes", "/updateUserInfo", "/updateFoodQt", 
+            "/UpdateFoodExpire", "/consumeFood", "/getUsersInInventory"] } );
 });
-
 
 //function for executing query, returns {data: queryResult, status: statusCodeForResponse, error: errorMsg}
 async function executeQuery(query, pars) {
@@ -145,7 +151,6 @@ function genericUpdateEndpoint(query, pars) {
         res.status(status).send({ "rowsAffected": rowsAffected, "msg": msg})
     }
 }
-
 
 // return all the tags in the db
 app.get('/tags', async (req, res) => {
@@ -235,7 +240,6 @@ app.get('/user', async (req, res) => {
     singleRecordEndpoint("select id_utente, username, email, obiettivo_kcal, id_inventario from utenti where id_utente = $1 limit 1", [req.query.id_utente]) (req, res);
 })
 
-
 // return for how many days in the last 7 the user reached the daily goal of kcal
 app.get('/daysGoalReached', async (req, res) => {
     genericSelectEndpoint(`
@@ -321,7 +325,7 @@ app.post('/updateFoodExpire', async (req, res) => {
 })
 
 // remove qt grams from food of row id_riga from righe_inventario, adding qt grams of that food in table alimenti_consumati
-//params (id_utente, qt, id_riga)
+// params (id_utente, qt, id_riga)
 app.post('/consumeFood', async (req, res) => {
     const id_riga = req.query.id_riga;
     const qt = req.query.qt;
@@ -370,21 +374,21 @@ app.get('/getUsersInInventory', async (req, res) => {
 
 // to delete, keep only for popolate the db, keep only for reference for post requests (?make a insert generic query function like for select?)
 app.get('/populate', async (req, res) => {
-    try {
-        console.log("populating db");
-        await pool.query("insert into alimenti (nome_alimento, kcal, peso_unitario, img, id_cat) values ('zucchine', 17, 100, 'zucchine.png', 1)");
+    // try {
+    //     console.log("populating db");
+    //     await pool.query("insert into alimenti (nome_alimento, kcal, peso_unitario, img, id_cat) values ('zucchine', 17, 100, 'zucchine.png', 1)");
             
-        res.status(200).send("data added");
-    } catch (error) {
-        console.error(error.message);
-    }
+    //     res.status(200).send("data added");
+    // } catch (error) {
+    //     console.error(error.message);
+    // }
 })
 
 
 //to delete, keep for queryng the db
 app.get('/temp', async (req, res) => { 
-    // genericSelectQuery("delete from utenti where id_utente <> 2") (req, res);
-    genericSelectEndpoint("select * from alimenti") (req, res);
+    //genericSelectQuery("delete from utenti where id_utente <> 2") (req, res);
+    // genericSelectEndpoint("select * from alimenti") (req, res);
     //genericInsertEndpoint("insert into categorie (nome_categoria, durata_media) values ('pesce', 3)") (req, res);
 
     //genericSelectQuery("select * from righe_inventario") (req, res);

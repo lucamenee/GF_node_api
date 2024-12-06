@@ -166,7 +166,7 @@ app.get('/alimenti', async (req, res) => {
 app.get('/inventory', async (req, res) => {
     genericSelectEndpoint("select *, grammi/peso_unitario as numero_prodotti from righe_inventario " +
             "natural join alimenti natural join categorie " +
-            "where id_inventario = $1 and grammi > 0" + 
+            "where id_inventario = $1 and grammi > 0 " + 
             "order by data_scadenza", [req.query.id_inventario]) (req, res);
 })
 

@@ -166,7 +166,7 @@ app.get('/alimenti', async (req, res) => {
 app.get('/inventory', async (req, res) => {
     genericSelectEndpoint("select *, grammi/peso_unitario as numero_prodotti from righe_inventario " +
             "natural join alimenti natural join categorie " +
-            "where id_inventario = $1 and (grammi > 0 OR essenziale=true)" + 
+            "where id_inventario = $1 and grammi > 0" + 
             "order by data_scadenza", [req.query.id_inventario]) (req, res);
 })
 
@@ -265,8 +265,26 @@ app.get('/daysGoalReached', async (req, res) => {
 // suggest recipes for a given id_inventario
 // TODO: add more complex query to suggest recipes based on the food in the inventory -> v2.0 suggest recipes based on the tags and exèiring date of the food in the inventory
 app.get('/suggestRecipes', async (req, res) => {
-    const {data, status, error} = await executeQuery("select distinct id_ricetta, nome_ricetta from ricette natural join righe_ricette natural join alimenti " + 
-        "where id_alimento in (select id_alimento from righe_inventario where id_riga_inventario = $1 and grammi > 0)", [req.query.id_inventario]);
+    const query = `
+        SELECT DISTINCT r.id_ricetta, r.nome_ricetta
+        FROM ricette r
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM righe_ricette rr2
+            WHERE rr2.id_ricetta = r.id_ricetta
+            AND rr2.id_alimento IN (
+                select id_alimento
+                from alimenti natural left join righe_inventario
+                where id_inventario = $1
+                group by id_alimento
+                having sum(grammi) = 0
+            )
+        )
+        
+        
+    `;
+    const {data, status, error} = await executeQuery(query, [req.query.id_inventario]);
+    if (error) res.status(status).send(error); 
     let result = data.rows;
     for (let r_row of result) {
         const {data: data_row, status, error} = await executeQuery('select nome_alimento, grammi from righe_ricette natural join alimenti where id_ricetta = $1', [r_row.id_ricetta]);
@@ -374,14 +392,15 @@ app.get('/getUsersInInventory', async (req, res) => {
 
 // to delete, keep only for popolate the db, keep only for reference for post requests (?make a insert generic query function like for select?)
 app.get('/populate', async (req, res) => {
-    // try {
-    //     console.log("populating db");
-    //     await pool.query("insert into alimenti (nome_alimento, kcal, peso_unitario, img, id_cat) values ('zucchine', 17, 100, 'zucchine.png', 1)");
+    try {
+        console.log("populating db");
+        //await pool.query("insert into righe_ricette (id_ricetta, id_alimento, grammi) values (2, 7, 100)");
+        const q = await pool.query("select * from ricette");
             
-    //     res.status(200).send("data added");
-    // } catch (error) {
-    //     console.error(error.message);
-    // }
+        res.status(200).send(q.rows);
+    } catch (error) {
+        console.error(error.message);
+    }
 })
 
 

@@ -266,7 +266,7 @@ app.get('/daysGoalReached', async (req, res) => {
 // TODO: add more complex query to suggest recipes based on the food in the inventory -> v2.0 suggest recipes based on the tags and exèiring date of the food in the inventory
 app.get('/suggestRecipes', async (req, res) => {
     const {data, status, error} = await executeQuery("select distinct id_ricetta, nome_ricetta from ricette natural join righe_ricette natural join alimenti " + 
-        "where id_alimento in (select id_alimento from inventari where id_inventario = $1)", [req.query.id_inventario]);
+        "where id_alimento in (select id_alimento from righe_inventario where id_riga_inventario = $1 and grammi > 0)", [req.query.id_inventario]);
     let result = data.rows;
     for (let r_row of result) {
         const {data: data_row, status, error} = await executeQuery('select nome_alimento, grammi from righe_ricette natural join alimenti where id_ricetta = $1', [r_row.id_ricetta]);

@@ -207,15 +207,31 @@ app.post('/login', async (req, res) => {
 
 // registration
 app.post('/register', async (req, res) => {
+    let msg = "", status = 200;
+
     const { username, password, kcal, email  } = req.query;
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(password, salt);
+
     try {
-        await pool.query("insert into utenti (username, hashed_password, salt, obiettivo_kcal, email) values ($1, $2, $3, $4, $5)", [username, hash, salt, kcal, email]);
-        res.status(200).send({msg: "user added"});
+        const queryRes = await pool.query("select id_utente from utenti where username = $1", [username]);
+        if (queryRes.rowCount > 0){
+            msg = "usernamae already used by another user";
+            status = 300;
+        } else {
+            await pool.query("insert into utenti (username, hashed_password, salt, obiettivo_kcal, email) values ($1, $2, $3, $4, $5)", [username, hash, salt, kcal, email]);
+            await pool.query("insert into inventari default values");
+            const id_inventario = await pool.query("select max(id_inventario) from inventari");
+            await pool.query("update utenti set id_inventario = $1 where username = $2", [id_inventario.rows[0].max, username]);
+            msg = "user added";
+        }
+       
     } catch (error) {
-        console.error({msg: error.message});
+        msg = error.message;
+        status = 500;
     }
+    console.log({status: status, msg: msg});
+    res.status(status).send({status: status, msg: msg});
 })
 
 // insert alimenti in righe_inventario if not already in the db (with the same data_scadenza), update quantity otherwise
@@ -392,22 +408,24 @@ app.get('/getUsersInInventory', async (req, res) => {
 
 // to delete, keep only for popolate the db, keep only for reference for post requests (?make a insert generic query function like for select?)
 app.get('/populate', async (req, res) => {
-    try {
-        console.log("populating db");
-        //await pool.query("insert into righe_ricette (id_ricetta, id_alimento, grammi) values (2, 7, 100)");
-        const q = await pool.query("select * from ricette");
+    // try {
+    //     console.log("populating db");
+    //     //await pool.query("insert into righe_ricette (id_ricetta, id_alimento, grammi) values (2, 7, 100)");
+    //     const q = await pool.query("select * from ricette");
             
-        res.status(200).send(q.rows);
-    } catch (error) {
-        console.error(error.message);
-    }
+    //     res.status(200).send(q.rows);
+    // } catch (error) {
+    //     console.error(error.message);
+    // }
+
+    genericSelectEndpoint("delete from utenti where id_inventario is null") (req, res);
 })
 
 
 //to delete, keep for queryng the db
 app.get('/temp', async (req, res) => { 
-    //genericSelectQuery("delete from utenti where id_utente <> 2") (req, res);
-    // genericSelectEndpoint("select * from alimenti") (req, res);
+    //
+     genericSelectEndpoint("select * from utenti") (req, res);
     //genericInsertEndpoint("insert into categorie (nome_categoria, durata_media) values ('pesce', 3)") (req, res);
 
     //genericSelectQuery("select * from righe_inventario") (req, res);

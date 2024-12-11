@@ -41,7 +41,10 @@
  *                      id_riga=
  * 
  *     /getUsersInInventory                  GET
- *                      ?id_inventario      
+ *                      ?id_inventario   
+ * 
+ *     /userTodaysCalories                   GET
+ *                      ?id_utente=
  * 
  **/
 
@@ -399,6 +402,18 @@ app.get('/getUsersInInventory', async (req, res) => {
         [id_inventario]) (req, res);
 })
 
+// return the calories consumed by user with a certain id_user 
+app.get('/userTodaysCalories', async (req, res) =>  {
+
+    const {data, status, error} = await executeQuery("select coalesce(sum(grammi * kcal / 100), 0) as kcal_consumate  " + 
+        "from alimenti_consumati natural join alimenti natural join utenti " + 
+        "where id_utente = $1 and data_consumazione::date = CURRENT_DATE", 
+        [req.query.id_utente]);
+    const result = data.rows[0].kcal_consumate;
+    console.log(result);
+    res.status(status).send(result);
+})
+
 
 
 
@@ -425,7 +440,7 @@ app.get('/populate', async (req, res) => {
 //to delete, keep for queryng the db
 app.get('/temp', async (req, res) => { 
     //
-     genericSelectEndpoint("select * from utenti") (req, res);
+     genericSelectEndpoint("select * from righe_inventario where id_inventario=1") (req, res);
     //genericInsertEndpoint("insert into categorie (nome_categoria, durata_media) values ('pesce', 3)") (req, res);
 
     //genericSelectQuery("select * from righe_inventario") (req, res);

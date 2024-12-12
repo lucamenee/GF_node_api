@@ -210,7 +210,7 @@ app.post('/login', async (req, res) => {
 
 // registration
 app.post('/register', async (req, res) => {
-    let msg = "", status = 200;
+    let msg = "", status = 200, status_r = 200;
 
     const { username, password, kcal, email  } = req.query;
     const salt = bcrypt.genSaltSync(10);
@@ -220,7 +220,7 @@ app.post('/register', async (req, res) => {
         const queryRes = await pool.query("select id_utente from utenti where username = $1", [username]);
         if (queryRes.rowCount > 0){
             msg = "usernamae already used by another user";
-            status = 300;
+            status_r = 300;
         } else {
             await pool.query("insert into utenti (username, hashed_password, salt, obiettivo_kcal, email) values ($1, $2, $3, $4, $5)", [username, hash, salt, kcal, email]);
             await pool.query("insert into inventari default values");
@@ -234,7 +234,7 @@ app.post('/register', async (req, res) => {
         status = 500;
     }
     console.log({status: status, msg: msg});
-    res.status(status).send({status: status, msg: msg});
+    res.status(status).send({status: status_r, msg: msg});
 })
 
 // insert alimenti in righe_inventario if not already in the db (with the same data_scadenza), update quantity otherwise

@@ -225,7 +225,7 @@ app.post('/register', async (req, res) => {
             await pool.query("insert into utenti (username, hashed_password, salt, obiettivo_kcal, email) values ($1, $2, $3, $4, $5)", [username, hash, salt, kcal, email]);
             await pool.query("insert into inventari default values");
             const id_inventario = await pool.query("select max(id_inventario) from inventari");
-            await pool.query("update utenti set id_inventario = $1 where username = $2", [id_inventario.rows[0].max, username]);
+            await pool.query("update utenti set id_inventario = $1, id_inventario_og = $1 where username = $2", [id_inventario.rows[0].max, username]);
             msg = "user added";
         }
        
@@ -440,9 +440,9 @@ app.get('/populate', async (req, res) => {
 //to delete, keep for queryng the db
 app.get('/temp', async (req, res) => { 
     //
-     genericSelectEndpoint("select * from righe_inventario where id_inventario=1") (req, res);
+    //genericSelectEndpoint("select * from righe_inventario where id_inventario=1") (req, res);
     //genericInsertEndpoint("insert into categorie (nome_categoria, durata_media) values ('pesce', 3)") (req, res);
-
+    genericSelectEndpoint("select * from utenti;") (req, res);
     //genericSelectQuery("select * from righe_inventario") (req, res);
     //genericInsertQuery("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values ($1, $2, $3, $4, $5)", [1, 3, '2024-12-25', 300, false]) (req, res);
 })

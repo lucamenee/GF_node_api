@@ -46,7 +46,7 @@
  *     /userTodaysCalories                   GET
  *                      ?id_utente=
  * 
- *     /inventario_og   ?username=           GET            return id_inventario_og for a given username
+ *     /inventoryOg   ?username=           GET            return id_inventario_og for a given username
  * 
  **/
 
@@ -417,7 +417,7 @@ app.get('/userTodaysCalories', async (req, res) =>  {
 })
 
 // return id_inventario_og for a given username
-app.get('/inventario_og', async (req, res) => {
+app.get('/inventoryOg', async (req, res) => {
     let result = {code: 400, msg: "No user found ", id_inventario_og: null};
     const username = req.query.username;
     const {data, status, error} = await executeQuery("select * from utenti where username = $1", [username]);

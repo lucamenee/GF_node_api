@@ -46,6 +46,8 @@
  *     /userTodaysCalories                   GET
  *                      ?id_utente=
  * 
+ *     /inventario_og   ?username=           GET            return id_inventario_og for a given username
+ * 
  **/
 
 require('dotenv').config();
@@ -414,6 +416,20 @@ app.get('/userTodaysCalories', async (req, res) =>  {
     res.status(status).send(result);
 })
 
+// return id_inventario_og for a given username
+app.get('/inventario_og', async (req, res) => {
+    let result = {code: 400, msg: "No user found ", id_inventario_og: null};
+    const username = req.query.username;
+    const {data, status, error} = await executeQuery("select * from utenti where username = $1", [username]);
+    if (error) {
+        result.msg += error;
+    } else if (data.rowCount > 0) {
+        result = {code: 300, msg:"User found", id_inventario_og: data.rows[0].id_inventario_og};
+    }
+    console.log(result);
+    res.status(300).send(result);
+})
+
 
 
 
@@ -433,7 +449,7 @@ app.get('/populate', async (req, res) => {
     //     console.error(error.message);
     // }
 
-    genericSelectEndpoint("delete from utenti where id_inventario is null") (req, res);
+    //genericSelectEndpoint("delete from utenti where id_inventario is null") (req, res);
 })
 
 
@@ -442,7 +458,7 @@ app.get('/temp', async (req, res) => {
     //
     //genericSelectEndpoint("select * from righe_inventario where id_inventario=1") (req, res);
     //genericInsertEndpoint("insert into categorie (nome_categoria, durata_media) values ('pesce', 3)") (req, res);
-    genericSelectEndpoint("select * from utenti;") (req, res);
+    //genericSelectEndpoint("select * from utenti;") (req, res);
     //genericSelectQuery("select * from righe_inventario") (req, res);
     //genericInsertQuery("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values ($1, $2, $3, $4, $5)", [1, 3, '2024-12-25', 300, false]) (req, res);
 })

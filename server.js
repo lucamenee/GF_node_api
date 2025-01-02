@@ -164,7 +164,7 @@ app.get('/tags', async (req, res) => {
 
 // return all the foods in the db
 app.get('/alimenti', async (req, res) => {
-    genericSelectEndpoint("select * from alimenti natural join categorie") (req, res);
+    genericSelectEndpoint("select * from alimenti natural join categorie order by nome_alimento") (req, res);
 })
 
 // return all the products in a invetory for a given id_inventario

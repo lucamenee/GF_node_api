@@ -430,7 +430,7 @@ app.get('/inventoryOg', async (req, res) => {
         result = {code: 300, msg:"User found", id_inventario_og: data.rows[0].id_inventario_og};
     }
     console.log(result);
-    res.status(300).send(result);
+    res.status(200).send(result);
 })
 
 
@@ -458,7 +458,7 @@ app.get('/populate', async (req, res) => {
 
 //to delete, keep for queryng the db
 app.get('/temp', async (req, res) => { 
-    //genericUpdateEndpoint("update utenti set id_inventario_og = 1") (req, res);
+    //genericUpdateEndpoint("update utenti set id_inventario_og = 2 where username = 'test'") (req, res);
     //genericSelectEndpoint("select * from righe_inventario where id_inventario=1") (req, res);
     //genericInsertEndpoint("insert into categorie (nome_categoria, durata_media) values ('pesce', 3)") (req, res);
     //genericSelectEndpoint("select * from utenti;") (req, res);

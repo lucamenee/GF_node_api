@@ -258,7 +258,10 @@ app.post('/addFoodInventory', async (req, res) => {
 
 // get main info from a user of a given id_utente
 app.get('/user', async (req, res) => {
-    singleRecordEndpoint("select id_utente, username, email, obiettivo_kcal, id_inventario from utenti where id_utente = $1 limit 1", [req.query.id_utente]) (req, res);
+    singleRecordEndpoint("select u1.id_utente as id_utente, u1.username as username, u1.email as mail, " + 
+        "u1.obiettivo_kcal as obiettivo_kcal, u1.id_inventario as id_inventario, u2.username as proprietario " + 
+        "from utenti u1 join utenti u2 on u1.id_inventario = u2.id_inventario_og " +
+        "where u1.id_utente = $1 limit 1", [req.query.id_utente]) (req, res);
 })
 
 // return for how many days in the last 7 the user reached the daily goal of kcal
@@ -455,7 +458,7 @@ app.get('/populate', async (req, res) => {
 
 //to delete, keep for queryng the db
 app.get('/temp', async (req, res) => { 
-    //
+    //genericUpdateEndpoint("update utenti set id_inventario_og = 1") (req, res);
     //genericSelectEndpoint("select * from righe_inventario where id_inventario=1") (req, res);
     //genericInsertEndpoint("insert into categorie (nome_categoria, durata_media) values ('pesce', 3)") (req, res);
     //genericSelectEndpoint("select * from utenti;") (req, res);

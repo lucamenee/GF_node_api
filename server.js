@@ -12,7 +12,7 @@
  *     /addFoodInventory ?id_inventario=&    POST        Add a food to an inventory
  *                      id_alimento=&
  *                      data_scadenza=&
- *                      grammi=&essenziale=     
+ *                      grammi=  
  *
  *     /tags              -                  GET         Get a list of tags
  * 
@@ -241,8 +241,8 @@ app.post('/register', async (req, res) => {
 
 // insert alimenti in righe_inventario if not already in the db (with the same data_scadenza), update quantity otherwise
 app.post('/addFoodInventory', async (req, res) => {
-    let { id_inventario, id_alimento, data_scadenza, grammi, essenziale } = req.query;
-    if (!essenziale) essenziale = false;
+    let { id_inventario, id_alimento, data_scadenza, grammi} = req.query;
+    
 
     // check if the row is already in the db
     const result = await pool.query("select id_riga_inventario from righe_inventario where id_inventario = $1 and id_alimento = $2 and data_scadenza = $3", [id_inventario, id_alimento, data_scadenza]);
@@ -251,7 +251,7 @@ app.post('/addFoodInventory', async (req, res) => {
         console.log("row already in the db");
         genericUpdateEndpoint("update righe_inventario set grammi = grammi + $1 where id_riga_inventario = $2 ", [grammi, id_riga_inventario]) (req, res);
     } else {
-        genericInsertEndpoint("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values ($1, $2, $3, $4, $5)", [id_inventario, id_alimento, data_scadenza, grammi, essenziale]) (req, res);
+        genericInsertEndpoint("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi) values ($1, $2, $3, $4)", [id_inventario, id_alimento, data_scadenza, grammi]) (req, res);
 
     }
 })
@@ -458,6 +458,7 @@ app.get('/populate', async (req, res) => {
 
 //to delete, keep for queryng the db
 app.get('/temp', async (req, res) => { 
+    //genericSelectEndpoint("select * from righe_inventario") (req, res);
     //genericUpdateEndpoint("update utenti set id_inventario_og = 2 where username = 'test'") (req, res);
     //genericSelectEndpoint("select * from righe_inventario where id_inventario=1") (req, res);
     //genericInsertEndpoint("insert into categorie (nome_categoria, durata_media) values ('pesce', 3)") (req, res);

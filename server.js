@@ -281,7 +281,7 @@ app.get('/daysGoalReached', async (req, res) => {
         NATURAL LEFT JOIN alimenti 
         WHERE id_utente = $1 OR id_utente IS NULL
         GROUP BY d.data_consumazione, obiettivo_kcal
-        ORDER BY d.data_consumazione DESC        
+        ORDER BY d.data_consumazione         
     `, [req.query.id_utente]) (req, res);
 
 })

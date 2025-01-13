@@ -258,7 +258,7 @@ app.post('/addFoodInventory', async (req, res) => {
 
 // get main info from a user of a given id_utente
 app.get('/user', async (req, res) => {
-    singleRecordEndpoint("select u1.id_utente as id_utente, u1.username as username, u1.email as mail, " + 
+    singleRecordEndpoint("select u1.id_utente as id_utente, u1.username as username, u1.email as email, " + 
         "u1.obiettivo_kcal as obiettivo_kcal, u1.id_inventario as id_inventario, u2.username as proprietario " + 
         "from utenti u1 join utenti u2 on u1.id_inventario = u2.id_inventario_og " +
         "where u1.id_utente = $1 limit 1", [req.query.id_utente]) (req, res);
@@ -462,7 +462,21 @@ app.get('/temp', async (req, res) => {
     //genericUpdateEndpoint("update utenti set id_inventario_og = 2 where username = 'test'") (req, res);
     //genericSelectEndpoint("select * from righe_inventario where id_inventario=1") (req, res);
     //genericInsertEndpoint("insert into categorie (nome_categoria, durata_media) values ('pesce', 3)") (req, res);
-    //genericSelectEndpoint("select * from utenti;") (req, res);
+    // genericSelectEndpoint("select * from utenti;") (req, res);
+    //genericSelectEndpoint("select * from categorie") (req, res);
+    // genericSelectEndpoint("insert into alimenti (nome_alimento, kcal, img, peso_unitario, id_cat) "+
+    //     "values ('formaggio', 402, 'formaggio.png', null, 6), "+
+    //     "('carne', 143, 'carne.png', null, 2), "+
+    //     "('patate', 73, 'patate.png', 160, 1), "+
+    //     "('salsiccia', 350, 'salsicce.png', null, 2), " +
+    //     "('carote', 40, 'carota.png', 60, 1), " +
+    //     "('salmone', 208, 'salmone.png', null, 5), " +
+    //     "('pesce', 150, 'pesce.png', null, 5)") (req, res);
+
+    // genericSelectEndpoint("select * from ricette") (req,res);
+    // genericSelectEndpoint("insert into ricette (nome_ricetta) values ('salsicce grigliate e patatine fritte')") (req, res);
+    // genericSelectEndpoint("insert into righe_ricette (id_ricetta, id_alimento, grammi) values (4, 10, 150), (4, 11, 200)") (req, res);
+    
     //genericSelectQuery("select * from righe_inventario") (req, res);
     //genericInsertQuery("insert into righe_inventario(id_inventario, id_alimento, data_scadenza, grammi, essenziale) values ($1, $2, $3, $4, $5)", [1, 3, '2024-12-25', 300, false]) (req, res);
 })
